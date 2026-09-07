@@ -96,6 +96,7 @@ Exit codes make it usable in a pipeline:
 | `inconsistent_formula` | high | One formula differs from the many matching formulas around it. Invisible on screen, and the pattern most often found behind a wrong total. |
 | `total_misses_rows` | high | A `SUM` range stops short of numbers sitting between it and the total. Rows added under a table fall outside a total nobody extended. |
 | `circular_reference` | high | Cells depend on themselves, directly or through a chain. Excel shows zero rather than an error. |
+| `iterative_calculation` | medium | Excel's iterative calculation setting is on. It is only needed when formulas depend on each other, and it makes results depend on how many passes Excel was told to run. |
 | `error_value` | high | A saved result is `#REF!`, `#DIV/0!`, `#VALUE!` or similar. |
 | `broken_defined_name` | high | A named range points at deleted cells. |
 | `number_stored_as_text` | medium | Digits stored as text in a numeric column. `SUM` and lookups skip them silently. |
