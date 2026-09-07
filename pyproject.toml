@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "show-your-work"
+version = "0.1.0"
+description = "Finds the numbers in a spreadsheet that nobody can explain. Runs entirely on your machine."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Waiga Arya" }]
+keywords = ["excel", "xlsx", "spreadsheet", "audit", "formula", "review", "openpyxl"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Office/Business :: Financial :: Spreadsheet",
+]
+dependencies = ["openpyxl>=3.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/Waiga/show-your-work"
+Issues = "https://github.com/Waiga/show-your-work/issues"
+
+[project.scripts]
+show-your-work = "show_your_work.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["show_your_work"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
+# Parsing a third-party file format is exactly where a broad except belongs: a
+# malformed workbook must degrade one check, never end the run.
+ignore = ["B904"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
