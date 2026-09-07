@@ -38,7 +38,7 @@ NOT_CHECKED_ALWAYS = [
 ]
 
 
-def to_json(report: Report, show_values: bool = False) -> str:
+def to_json(report: Report, show_values: bool = False, indent: int | None = 2) -> str:
     payload = {
         "file": report.path,
         "sheets_read": report.sheets_read,
@@ -48,7 +48,7 @@ def to_json(report: Report, show_values: bool = False) -> str:
         + [{"topic": t, "reason": r} for t, r in NOT_CHECKED_ALWAYS],
         "values_included": show_values,
     }
-    return json.dumps(payload, indent=2)
+    return json.dumps(payload, indent=indent)
 
 
 def _rule(char: str = "-", width: int = 72) -> str:

@@ -30,7 +30,11 @@ def build_parser() -> argparse.ArgumentParser:
             "1 findings at or above it, 2 the file could not be read."
         ),
     )
-    parser.add_argument("workbook", help="path to an .xlsx or .xlsm file")
+    parser.add_argument(
+        "workbook",
+        nargs="+",
+        help="path to an .xlsx or .xlsm file (more than one may be given)",
+    )
     parser.add_argument(
         "--format", choices=("text", "json"), default="text", help="output format"
     )
@@ -64,27 +68,59 @@ def run(path: str) -> Report:
         book.close()
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-
-    try:
-        report = run(args.workbook)
-    except UnreadableWorkbook as exc:
-        print(f"show-your-work: {exc}", file=sys.stderr)
-        return EXIT_UNREADABLE
-
-    if args.format == "json":
-        print(report_module.to_json(report, show_values=args.show_values))
-    else:
-        print(report_module.to_text(report, show_values=args.show_values, verbose=args.verbose))
-
-    threshold = THRESHOLDS[args.fail_on]
+def _exit_for(report: Report, threshold: Level | None) -> int:
+    """The exit code one report earns against the fail level."""
     if threshold is None:
         return EXIT_CLEAN
     worst = report.worst_level()
     if worst is not None and worst.rank >= threshold.rank:
         return EXIT_FINDINGS
     return EXIT_CLEAN
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    threshold = THRESHOLDS[args.fail_on]
+
+    # A pre-commit hook or a shell glob hands over several workbooks at once. Each is
+    # opened, checked and reported on its own; one unreadable file does not stop the
+    # rest. The command's exit code is the worst any single file earned: 2 if any could
+    # not be read, otherwise 1 if any had findings at or above the fail level, else 0.
+    reports: list[Report] = []
+    worst_exit = EXIT_CLEAN
+    for path in args.workbook:
+        try:
+            report = run(path)
+        except UnreadableWorkbook as exc:
+            print(f"show-your-work: {path}: {exc}", file=sys.stderr)
+            worst_exit = EXIT_UNREADABLE
+            continue
+        reports.append(report)
+        if worst_exit != EXIT_UNREADABLE:
+            worst_exit = max(worst_exit, _exit_for(report, threshold))
+
+    if args.format == "json":
+        # One file stays a single object, so a caller can parse it directly; several
+        # files become an array, so the whole of stdout remains valid JSON.
+        if len(args.workbook) == 1 and reports:
+            print(report_module.to_json(reports[0], show_values=args.show_values))
+        else:
+            objects = [
+                report_module.to_json(r, show_values=args.show_values, indent=None)
+                for r in reports
+            ]
+            print("[" + ", ".join(objects) + "]")
+    else:
+        for i, report in enumerate(reports):
+            if i:
+                print()
+            print(
+                report_module.to_text(
+                    report, show_values=args.show_values, verbose=args.verbose
+                )
+            )
+
+    return worst_exit
 
 
 if __name__ == "__main__":  # pragma: no cover

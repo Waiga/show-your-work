@@ -28,6 +28,32 @@ def test_missing_file_exits_two(tmp_path, capsys):
     assert "No such file" in capsys.readouterr().err
 
 
+# --- several files at once (a pre-commit hook hands over every staged workbook) ---
+
+
+def test_many_files_exit_one_when_any_has_findings(clean_model, overwritten, capsys):
+    assert main([clean_model, overwritten]) == EXIT_FINDINGS
+
+
+def test_many_files_below_fail_level_exit_zero(clean_model, text_numbers, capsys):
+    # text_numbers carries only a medium finding, below the default high fail level.
+    assert main([clean_model, text_numbers]) == EXIT_CLEAN
+
+
+def test_one_unreadable_file_among_readable_ones_exits_two(clean_model, tmp_path, capsys):
+    assert main([clean_model, str(tmp_path / "nope.xlsx")]) == EXIT_UNREADABLE
+    err = capsys.readouterr().err
+    assert "No such file" in err  # the bad one is named
+    assert "nope.xlsx" in err
+
+
+def test_many_files_json_is_a_valid_array(clean_model, overwritten, capsys):
+    main([clean_model, overwritten, "--format", "json"])
+    payload = json.loads(capsys.readouterr().out)
+    assert isinstance(payload, list)
+    assert len(payload) == 2
+
+
 def test_wrong_format_is_refused_by_name(tmp_path, capsys):
     legacy = tmp_path / "old.xls"
     legacy.write_bytes(b"not really a workbook")

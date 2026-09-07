@@ -1,0 +1,19 @@
+# Run Show Your Work over any spreadsheet being committed. It opens each staged
+# .xlsx or .xlsm on your machine, never uploads anything, and fails the commit when
+# a workbook has findings at or above the fail level.
+#
+# In a consuming repository's .pre-commit-config.yaml:
+#
+#   repos:
+#     - repo: https://github.com/Waiga/show-your-work
+#       rev: v0.1.0            # pin to a tag or commit
+#       hooks:
+#         - id: show-your-work
+#           args: [--fail-on, high]   # optional; high is the default
+#
+- id: show-your-work
+  name: show your work (spreadsheet audit)
+  description: Report spreadsheet cells that nobody can explain, and fail on findings.
+  entry: show-your-work
+  language: python
+  files: \.(xlsx|xlsm)$
