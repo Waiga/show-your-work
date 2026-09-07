@@ -173,7 +173,7 @@ This repository ships a [pre-commit](https://pre-commit.com) hook, so every `.xl
 ```yaml
 repos:
   - repo: https://github.com/Waiga/show-your-work
-    rev: v0.2.0            # pin to a tag or commit
+    rev: v0.2.1            # pin to a tag or commit
     hooks:
       - id: show-your-work
         args: [--fail-on, high]   # optional; high is the default

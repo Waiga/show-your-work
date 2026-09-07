@@ -5,7 +5,19 @@ number is correct, and it reports what it could not check as "not checked" rathe
 as a pass.
 """
 
-__version__ = "0.1.0"
+# Read from the installed package rather than repeated here. A hand-written copy
+# drifts the moment a release is cut, and then the tool misreports itself — which
+# is exactly the kind of unexplained number it exists to find.
+try:
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _installed_version
+
+    try:
+        __version__ = _installed_version("unexplained-cells")
+    except PackageNotFoundError:  # running from a source tree, not installed
+        __version__ = "unknown (not installed)"
+except ImportError:  # pragma: no cover - Python 3.7 and earlier
+    __version__ = "unknown"
 
 from show_your_work.findings import Finding, Level, Report, Unchecked
 
