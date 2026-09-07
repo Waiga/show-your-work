@@ -353,3 +353,8 @@ valuable thing you can open an issue with, provided it contains no real data.
 ## Licence
 
 MIT.
+
+## Author
+
+[Waiga Arya](https://www.linkedin.com/in/waigaarya/), Director of Business Strategy and
+Innovation at Sadaway Pvt. Ltd. These tools were built for my own operating problems first.
