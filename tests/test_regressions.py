@@ -385,3 +385,17 @@ def test_zip_without_a_workbook_gets_a_plain_message(tmp_path, capsys):
     message = capsys.readouterr().err
     assert "does not contain a workbook" in message
     assert "KeyError" not in message
+
+
+def test_the_reported_version_matches_the_installed_package():
+    """A hand-written version string drifts the moment a release is cut.
+
+    The first published release reported 0.1.0 while the package was 0.2.0,
+    because the number was typed in two places. It is now read from the installed
+    metadata, so there is only one place for it to be wrong.
+    """
+    from importlib.metadata import version
+
+    from show_your_work import __version__
+
+    assert __version__ == version("unexplained-cells")
