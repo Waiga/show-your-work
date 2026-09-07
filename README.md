@@ -112,17 +112,22 @@ cannot account for, so a human can go and look at those instead of all of them.
 Python 3.9 or newer. The only dependency is `openpyxl`.
 
 ```bash
+pip install unexplained-cells
+```
+
+Or from source:
+
+```bash
 git clone https://github.com/Waiga/show-your-work
 cd show-your-work
 pip install -e .
 ```
 
-It is not published to PyPI, so `pip install show-your-work` will not work. That
-name is taken: [showyourwork](https://pypi.org/project/showyourwork/) is an
-established, unrelated project for reproducible scientific articles, and PyPI
-refuses names that close to an existing one. Publishing this under a near-miss
-name would put a confusingly similar package beside theirs to save a few
-keystrokes, so it is installed from source, as above.
+The package is called `unexplained-cells`, which is what it reports. The name
+`show-your-work` on PyPI belongs to [showyourwork](https://pypi.org/project/showyourwork/),
+an established and unrelated project for reproducible scientific articles, and a
+near-miss name beside theirs would help nobody. The command you type is still
+`show-your-work`.
 
 ## Use
 
@@ -168,7 +173,7 @@ This repository ships a [pre-commit](https://pre-commit.com) hook, so every `.xl
 ```yaml
 repos:
   - repo: https://github.com/Waiga/show-your-work
-    rev: v0.1.0            # pin to a tag or commit
+    rev: v0.2.0            # pin to a tag or commit
     hooks:
       - id: show-your-work
         args: [--fail-on, high]   # optional; high is the default
