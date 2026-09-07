@@ -68,23 +68,44 @@ def inconsistent_formulas(book: LoadedWorkbook, report: Report) -> None:
                 if len(odd) / len(formula_cells) > MAX_ODD_SHARE:
                     continue
 
+                ends = (block[0].coordinate, block[-1].coordinate)
+
                 for cell in odd:
                     key = (sheet.title, cell.coordinate)
                     if key in seen:
                         continue
                     seen.add(key)
+
+                    # The first and last cell of a block is where a header row or a
+                    # total lives, and both are meant to differ from the column they
+                    # bound. A published census table computes its top row against the
+                    # grand total and every row beneath it against that top row: a real
+                    # difference, deliberate, and not worth alarming anyone about. A
+                    # cell in the MIDDLE of a run has no such excuse, so it keeps the
+                    # full level. This is the same reasoning overwritten_formula uses.
+                    at_end = cell.coordinate in ends
+                    level = Level.MEDIUM if at_end else Level.HIGH
+
                     report.add(
                         Finding(
                             check="inconsistent_formula",
-                            level=Level.HIGH,
+                            level=level,
                             sheet=sheet.title,
                             location=cell.coordinate,
                             summary=f"Formula differs from the {len(majority_cells)} "
-                            f"matching formulas in this {axis}",
+                            f"matching formulas in this {axis}"
+                            + (" and sits at the end of the block" if at_end else ""),
                             detail=(
                                 "A filled column normally repeats one formula. A cell that "
                                 "quietly does something else looks identical on screen, and "
                                 "is the pattern most often found behind a wrong total."
+                                + (
+                                    " This one bounds the block rather than sitting inside "
+                                    "it, which is where a header or a total belongs, so it "
+                                    "is reported at a lower level."
+                                    if at_end
+                                    else ""
+                                )
                             ),
                             sample=str(cell.value),
                         )

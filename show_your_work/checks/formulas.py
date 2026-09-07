@@ -33,17 +33,36 @@ _AGGREGATE_RE = re.compile(
 )
 
 # A subtotal legitimately differs from the column it closes, so it is not an oddity.
+# The call is looked for anywhere in the formula, not only at the start: "=+SUM(C2:C9)"
+# is the Lotus carry-over idiom and is everywhere in real finance workbooks, and
+# "=ROUND(SUM(C2:C9),0)" is the ordinary way to write a rounded total. Requiring the
+# aggregate to open the formula reported both of those as broken.
 _SUBTOTAL_RE = re.compile(
-    r"^\s*=\s*(SUM|SUBTOTAL|AVERAGE|COUNT|COUNTA|MIN|MAX|MEDIAN|PRODUCT|SUMPRODUCT)\s*\(",
+    r"\b(SUM|SUBTOTAL|AVERAGE|COUNT|COUNTA|MIN|MAX|MEDIAN|PRODUCT|SUMPRODUCT)\s*\(",
     re.IGNORECASE,
 )
 
 
+def _calls_an_aggregate(formula: str) -> bool:
+    """True when a formula calls an aggregate anywhere, ignoring text inside quotes.
+
+    The name must be followed directly by its opening bracket, so the conditional
+    family — SUMIF, SUMIFS, COUNTIF, COUNTIFS, AVERAGEIF — does not match. Those
+    aggregate a filtered subset rather than the block a total closes.
+    """
+    return bool(_SUBTOTAL_RE.search(_STRING_LITERAL_RE.sub('""', formula)))
+
+
 def is_subtotal_like(cell, block: list) -> bool:
-    """True for an aggregate sitting at either end of the block it summarises."""
+    """True for an aggregate sitting at either end of the block it summarises.
+
+    Position still decides. Widening the pattern above lets a total be written
+    "=+SUM(...)" or "=ROUND(SUM(...),0)", but a cell holding an aggregate part-way
+    down a block is not exempt from anything and is still reported.
+    """
     if cell.data_type != "f" or not isinstance(cell.value, str):
         return False
-    if not _SUBTOTAL_RE.match(cell.value):
+    if not _calls_an_aggregate(cell.value):
         return False
     return cell.coordinate in (block[0].coordinate, block[-1].coordinate)
 
@@ -221,28 +240,59 @@ def overwritten_formulas(book: LoadedWorkbook, report: Report) -> None:
 
 
 def _is_aggregate_cell(cell) -> bool:
-    """True for a cell holding SUM, SUBTOTAL and friends."""
+    """True for a cell holding SUM, SUBTOTAL and friends.
+
+    Unlike is_subtotal_like this carries no position test, because a subtotal in a
+    gap is defined by sitting in the gap. The widened pattern is right here too: a
+    section subtotal written "=+SUM(B5:B7)" is the same subtotal as "=SUM(B5:B7)"
+    and the grand total above it excludes it for the same reason.
+    """
     return (
         cell.data_type == "f"
         and isinstance(cell.value, str)
-        and bool(_SUBTOTAL_RE.match(cell.value))
+        and _calls_an_aggregate(cell.value)
     )
 
 
-def _gap(sheet, fixed: int, first: int, last: int, vertical: bool) -> list[int]:
+def _gap(sheet, fixed: int, first: int, last: int, vertical: bool, formula: str) -> list[int]:
     """Positions in a line that hold their own numbers, skipping other totals.
 
     A subtotal sitting in the gap is deliberately excluded from the range above it,
     which is how stacked sections in a budget are meant to be built.
+
+    A cell the formula names itself is skipped too. "=SUM(D93:D103)-D104" adds row 104
+    outside the range on purpose, which is how a deduction or an adjustment line is
+    written; reporting it as a skipped row is reading the formula only as far as its
+    first bracket.
     """
     if first < 1 or last < first:
         return []
     found = []
     for pos in range(first, last + 1):
         cell = sheet.cell(pos, fixed) if vertical else sheet.cell(fixed, pos)
-        if _is_number_like(cell) and not _is_aggregate_cell(cell):
-            found.append(pos)
+        if not _is_number_like(cell) or _is_aggregate_cell(cell):
+            continue
+        if _references(formula, cell.coordinate):
+            continue  # named elsewhere in the same formula, so it is not left out
+        found.append(pos)
     return found
+
+
+# A one-off partial aggregate is a slip; the same one repeated is a design decision.
+MIN_REPEATS_FOR_DESIGN = 3
+
+
+def _shape_counts(sheet, max_row: int, max_col: int) -> dict[str, int]:
+    """How many cells on the sheet share each normalised formula shape."""
+    counts: dict[str, int] = {}
+    for row in range(1, max_row + 1):
+        for col in range(1, max_col + 1):
+            cell = sheet.cell(row, col)
+            if cell.data_type != "f" or not isinstance(cell.value, str):
+                continue
+            shape = _shape(cell.value)
+            counts[shape] = counts.get(shape, 0) + 1
+    return counts
 
 
 def totals_that_miss_rows(book: LoadedWorkbook, report: Report) -> None:
@@ -255,6 +305,7 @@ def totals_that_miss_rows(book: LoadedWorkbook, report: Report) -> None:
         max_row, max_col, _ = _bounded(sheet)
         if max_row == 0 or max_col == 0:
             continue
+        repeats = _shape_counts(sheet, max_row, max_col)
 
         for row in range(1, max_row + 1):
             for col in range(1, max_col + 1):
@@ -263,6 +314,12 @@ def totals_that_miss_rows(book: LoadedWorkbook, report: Report) -> None:
                     continue
                 match = _AGGREGATE_RE.search(cell.value)
                 if not match:
+                    continue
+                if repeats.get(_shape(cell.value), 0) >= MIN_REPEATS_FOR_DESIGN:
+                    # A summary column that deliberately re-aggregates part of a table
+                    # repeats one formula down or across the sheet. A total that really
+                    # misses rows is a one-off slip, so repetition is the signal that
+                    # the shorter range was chosen rather than forgotten.
                     continue
 
                 func, col1, row1, col2, row2 = match.groups()
@@ -285,7 +342,7 @@ def totals_that_miss_rows(book: LoadedWorkbook, report: Report) -> None:
                 if here <= last:
                     continue  # the total sits inside or before its own range
 
-                missed = _gap(sheet, fixed, last + 1, here - 1, vertical)
+                missed = _gap(sheet, fixed, last + 1, here - 1, vertical, cell.value)
                 if missed:
                     names = _labels(missed, vertical)
                     report.add(
@@ -309,7 +366,7 @@ def totals_that_miss_rows(book: LoadedWorkbook, report: Report) -> None:
                     )
                     continue
 
-                before = _gap(sheet, fixed, first - 1, first - 1, vertical)
+                before = _gap(sheet, fixed, first - 1, first - 1, vertical, cell.value)
                 if before:
                     report.add(
                         Finding(
