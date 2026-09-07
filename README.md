@@ -79,7 +79,7 @@ Exit codes make it usable in a pipeline:
 |---|---|
 | `0` | nothing found at or above the fail level |
 | `1` | findings at or above the fail level |
-| `2` | the file could not be read |
+| `2` | the file could not be read, or the command line was wrong |
 
 `--fail-on` sets that level: `high` (default), `medium`, `low`, or `never`.
 
@@ -92,9 +92,9 @@ Exit codes make it usable in a pipeline:
 
 | Check | Level | What it means |
 |---|---|---|
-| `overwritten_formula` | high | A typed number sits inside a run of identical formulas. Someone replaced a calculation with a figure, so the sheet no longer explains it and it will not update. |
+| `overwritten_formula` | high / medium | A typed number sits inside a run of identical formulas. Someone replaced a calculation with a figure, so the sheet no longer explains it and it will not update. **High** when formulas sit on both sides of it. **Medium** at the top or bottom of a run, where a typed number is more often deliberate. A starting value that the formulas below it refer back to, such as an opening balance, is not reported at all. |
 | `inconsistent_formula` | high | One formula differs from the many matching formulas around it. Invisible on screen, and the pattern most often found behind a wrong total. |
-| `total_misses_rows` | high | A `SUM` range stops short of numbers sitting between it and the total. Rows added under a table fall outside a total nobody extended. |
+| `total_misses_rows` | high / medium | A `SUM` range stops short of the numbers next to it, checked both down a column and across a row. Rows added to a table fall outside a total nobody extended. A subtotal in the gap is ignored, because stacked sections are meant to be built that way. |
 | `circular_reference` | high | Cells depend on themselves, directly or through a chain. Excel shows zero rather than an error. |
 | `iterative_calculation` | medium | Excel's iterative calculation setting is on. It is only needed when formulas depend on each other, and it makes results depend on how many passes Excel was told to run. |
 | `error_value` | high | A saved result is `#REF!`, `#DIV/0!`, `#VALUE!` or similar. |
