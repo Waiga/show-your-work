@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from openpyxl.utils import get_column_letter
+from openpyxl.utils import column_index_from_string, get_column_letter
 
 from show_your_work.findings import Finding, Level, Report
 from show_your_work.workbook import LoadedWorkbook
@@ -45,7 +45,7 @@ def is_subtotal_like(cell, block: list) -> bool:
         return False
     if not _SUBTOTAL_RE.match(cell.value):
         return False
-    return cell is block[0] or cell is block[-1]
+    return cell.coordinate in (block[0].coordinate, block[-1].coordinate)
 
 
 def dominant_shape(formula_cells: list) -> tuple[str | None, list]:
@@ -209,7 +209,7 @@ def totals_that_miss_rows(book: LoadedWorkbook, report: Report) -> None:
                 if start_row > end_row:
                     start_row, end_row = end_row, start_row
 
-                range_col = sheet[f"{c1.upper()}1"].column
+                range_col = column_index_from_string(c1.upper())
                 missed_below = _numbers_between(sheet, range_col, end_row + 1, row - 1)
                 missed_above = _numbers_between(sheet, range_col, start_row - 1, start_row - 1)
 
