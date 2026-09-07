@@ -8,6 +8,7 @@ cells each formula names, then look for a path that returns to where it started.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 
 from openpyxl.utils import column_index_from_string, get_column_letter
 
@@ -103,7 +104,7 @@ def _find_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
     for start in graph:
         if colour[start] != WHITE:
             continue
-        stack: list[tuple[str, iter]] = [(start, iter(sorted(graph[start])))]
+        stack: list[tuple[str, Iterator[str]]] = [(start, iter(sorted(graph[start])))]
         path: list[str] = [start]
         colour[start] = GREY
 
