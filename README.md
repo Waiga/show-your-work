@@ -117,8 +117,12 @@ cd show-your-work
 pip install -e .
 ```
 
-It is not published to PyPI, so `pip install show-your-work` will not work.
-Install it from source, as above.
+It is not published to PyPI, so `pip install show-your-work` will not work. That
+name is taken: [showyourwork](https://pypi.org/project/showyourwork/) is an
+established, unrelated project for reproducible scientific articles, and PyPI
+refuses names that close to an existing one. Publishing this under a near-miss
+name would put a confusingly similar package beside theirs to save a few
+keystrokes, so it is installed from source, as above.
 
 ## Use
 
