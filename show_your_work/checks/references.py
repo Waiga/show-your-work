@@ -20,7 +20,20 @@ MAX_FORMULA_CELLS = 60_000
 MAX_RANGE_CELLS = 2_000
 
 _STRING_LITERAL_RE = re.compile(r'"[^"]*"')
-_EXTERNAL_RE = re.compile(r"\[[^\]\[]+\]")
+
+# An external reference must be removed WHOLE. Stripping only the [Book] part leaves
+# "Sheet2!B1" behind, which then reads as a local reference and invents a dependency
+# on a cell the formula never touches.
+_EXTERNAL_REF_RE = re.compile(
+    r"""(?:
+          '[^']*\[[^']*'          # 'C:\path\[Book.xlsx]Sheet'
+        | \[[^\[\]]+\](?:'[^']+'|[A-Za-z0-9_.]+)?   # [Book.xlsx]Sheet or [1]Sheet
+        )
+        !\$?[A-Za-z]{1,3}\$?\d+(?::\$?[A-Za-z]{1,3}\$?\d+)?""",
+    re.VERBOSE,
+)
+# Any bracket left after that removal still marks a reference we must not trust.
+_LEFTOVER_BRACKET_RE = re.compile(r"\[[^\[\]]*\]")
 
 # 'My Sheet'!A1:B2  |  Sheet1!A1  |  A1
 _REFERENCE_RE = re.compile(
@@ -46,8 +59,8 @@ def _node(sheet: str, row: int, col: int) -> str:
 def _dependencies(formula: str, home_sheet: str, known_sheets: set[str]) -> set[str]:
     """Cells a formula names, as graph nodes. External references are ignored."""
     body = _STRING_LITERAL_RE.sub('""', formula)
-    if _EXTERNAL_RE.search(body):
-        body = _EXTERNAL_RE.sub("[]", body)
+    body = _EXTERNAL_REF_RE.sub(" ", body)
+    body = _LEFTOVER_BRACKET_RE.sub(" ", body)
 
     deps: set[str] = set()
     for quoted, bare, first, last in _REFERENCE_RE.findall(body):

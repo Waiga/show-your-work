@@ -115,6 +115,38 @@ def _contiguous_blocks(cells: list) -> list[list]:
     return blocks
 
 
+
+def _references(formula: str, coordinate: str) -> bool:
+    """True when a formula names this cell, ignoring $ and case."""
+    if not isinstance(formula, str):
+        return False
+    target = coordinate.replace("$", "").upper()
+    body = _STRING_LITERAL_RE.sub('""', formula).replace("$", "").upper()
+    for match in re.finditer(r"(?<![A-Z0-9_])([A-Z]{1,3}\d+)(?![A-Z0-9_(])", body):
+        if match.group(1) == target:
+            return True
+    return False
+
+
+def is_seed_value(cell, block: list, index: dict) -> bool:
+    """True for a starting value that the run of formulas is built on.
+
+    A running balance, a cumulative counter and any recursive series all begin with a
+    typed number, and the formula next to it refers back to that number. That is the
+    sheet working correctly, not a formula someone overwrote.
+    """
+    position = index[cell.coordinate]
+    if position == 0:
+        neighbour = block[1] if len(block) > 1 else None
+    elif position == len(block) - 1:
+        neighbour = block[position - 1]
+    else:
+        return False
+    if neighbour is None or neighbour.data_type != "f":
+        return False
+    return _references(str(neighbour.value), cell.coordinate)
+
+
 def overwritten_formulas(book: LoadedWorkbook, report: Report) -> None:
     """A typed number sitting inside a run of formulas.
 
@@ -152,6 +184,8 @@ def overwritten_formulas(book: LoadedWorkbook, report: Report) -> None:
                 pattern = {c.coordinate for c in pattern_cells}
                 index = {c.coordinate: pos for pos, c in enumerate(block)}
                 for cell in constants:
+                    if is_seed_value(cell, block, index):
+                        continue  # an opening value the formulas below it build on
                     pos = index[cell.coordinate]
                     before = block[pos - 1] if pos > 0 else None
                     after = block[pos + 1] if pos + 1 < len(block) else None
@@ -186,8 +220,37 @@ def overwritten_formulas(book: LoadedWorkbook, report: Report) -> None:
                     )
 
 
+def _is_aggregate_cell(cell) -> bool:
+    """True for a cell holding SUM, SUBTOTAL and friends."""
+    return (
+        cell.data_type == "f"
+        and isinstance(cell.value, str)
+        and bool(_SUBTOTAL_RE.match(cell.value))
+    )
+
+
+def _gap(sheet, fixed: int, first: int, last: int, vertical: bool) -> list[int]:
+    """Positions in a line that hold their own numbers, skipping other totals.
+
+    A subtotal sitting in the gap is deliberately excluded from the range above it,
+    which is how stacked sections in a budget are meant to be built.
+    """
+    if first < 1 or last < first:
+        return []
+    found = []
+    for pos in range(first, last + 1):
+        cell = sheet.cell(pos, fixed) if vertical else sheet.cell(fixed, pos)
+        if _is_number_like(cell) and not _is_aggregate_cell(cell):
+            found.append(pos)
+    return found
+
+
 def totals_that_miss_rows(book: LoadedWorkbook, report: Report) -> None:
-    """A SUM whose range stops short of the numbers it sits under."""
+    """An aggregate whose range stops short of the numbers it sits next to.
+
+    Handles a total under a column and a total beside a row. A rectangular range is
+    left alone, because "the block it should cover" is not well defined there.
+    """
     for sheet in book.formulas.worksheets:
         max_row, max_col, _ = _bounded(sheet)
         if max_row == 0 or max_col == 0:
@@ -201,61 +264,76 @@ def totals_that_miss_rows(book: LoadedWorkbook, report: Report) -> None:
                 match = _AGGREGATE_RE.search(cell.value)
                 if not match:
                     continue
-                func, c1, r1, c2, r2 = match.groups()
-                start_row, end_row = int(r1), int(r2)
 
-                if c1.upper() != c2.upper():
-                    continue  # a rectangular range; the gap test below does not apply
-                if start_row > end_row:
-                    start_row, end_row = end_row, start_row
+                func, col1, row1, col2, row2 = match.groups()
+                start_row, end_row = sorted((int(row1), int(row2)))
+                start_col, end_col = sorted(
+                    (column_index_from_string(col1.upper()), column_index_from_string(col2.upper()))
+                )
 
-                range_col = column_index_from_string(c1.upper())
-                missed_below = _numbers_between(sheet, range_col, end_row + 1, row - 1)
-                missed_above = _numbers_between(sheet, range_col, start_row - 1, start_row - 1)
+                if start_col == end_col:
+                    vertical, fixed = True, start_col
+                    first, last, here = start_row, end_row, row
+                    unit, line = "row", "column"
+                elif start_row == end_row:
+                    vertical, fixed = False, start_row
+                    first, last, here = start_col, end_col, col
+                    unit, line = "column", "row"
+                else:
+                    continue  # a rectangular range has no single line to compare against
 
-                if missed_below:
+                if here <= last:
+                    continue  # the total sits inside or before its own range
+
+                missed = _gap(sheet, fixed, last + 1, here - 1, vertical)
+                if missed:
+                    names = _labels(missed, vertical)
                     report.add(
                         Finding(
                             check="total_misses_rows",
                             level=Level.HIGH,
                             sheet=sheet.title,
                             location=cell.coordinate,
-                            summary=f"{func.upper()} skips "
-                            f"{len(missed_below)} row{'s' if len(missed_below) > 1 else ''} "
-                            f"that {'sit' if len(missed_below) > 1 else 'sits'} between its "
-                            "range and the total",
+                            summary=f"{func.upper()} skips {len(missed)} {unit}"
+                            f"{'s' if len(missed) > 1 else ''} that "
+                            f"{'sit' if len(missed) > 1 else 'sits'} between its range "
+                            "and the total",
                             detail=(
-                                f"The range ends at row {end_row} but rows "
-                                f"{missed_below[0]}-{missed_below[-1]} in column "
-                                f"{c1.upper()} also hold numbers. Rows added under a table "
-                                "fall outside a total that was never extended."
+                                f"The range ends at {unit} {_label(last, vertical)} but "
+                                f"{unit}s {names[0]}-{names[-1]} in the same {line} also hold "
+                                f"numbers. {unit.capitalize()}s added to a table fall outside "
+                                "a total that was never extended."
                             ),
                             sample=cell.value,
                         )
                     )
-                elif missed_above and row > end_row:
+                    continue
+
+                before = _gap(sheet, fixed, first - 1, first - 1, vertical)
+                if before:
                     report.add(
                         Finding(
                             check="total_misses_rows",
                             level=Level.MEDIUM,
                             sheet=sheet.title,
                             location=cell.coordinate,
-                            summary=f"{func.upper()} may start one row too late",
+                            summary=f"{func.upper()} may start one {unit} too late",
                             detail=(
-                                f"The range starts at row {start_row}, and row "
-                                f"{start_row - 1} in column {c1.upper()} also holds a number "
-                                "in the same unbroken block."
+                                f"The range starts at {unit} {_label(first, vertical)}, and "
+                                f"{unit} {_label(first - 1, vertical)} in the same {line} "
+                                "also holds a number that is not itself a total."
                             ),
                             sample=cell.value,
                         )
                     )
 
 
-def _numbers_between(sheet, col: int, first_row: int, last_row: int) -> list[int]:
-    """Rows in a column that hold numbers, within an inclusive row window."""
-    if first_row < 1 or last_row < first_row:
-        return []
-    return [r for r in range(first_row, last_row + 1) if _is_number_like(sheet.cell(r, col))]
+def _label(position: int, vertical: bool) -> str:
+    return str(position) if vertical else get_column_letter(position)
+
+
+def _labels(positions: list[int], vertical: bool) -> list[str]:
+    return [_label(p, vertical) for p in positions]
 
 
 def cached_error_values(book: LoadedWorkbook, report: Report) -> None:

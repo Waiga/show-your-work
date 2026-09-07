@@ -58,7 +58,12 @@ def _describe_open_failure(path: Path, exc: Exception) -> str:
             "or protected with an open password. These look identical from the outside, "
             "so this tool cannot tell you which."
         )
-    return f"openpyxl could not open the file: {exc}"
+    if isinstance(exc, KeyError):
+        return (
+            "The file is a zip archive but does not contain a workbook. It is most "
+            "likely corrupt or was renamed from another format."
+        )
+    return f"The file could not be opened as a workbook: {exc}"
 
 
 def load(path_str: str) -> LoadedWorkbook:
