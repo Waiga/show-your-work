@@ -50,19 +50,16 @@ cannot account for, so a human can go and look at those instead of all of them.
 
 ## Install
 
-```bash
-pip install show-your-work
-```
-
 Python 3.9 or newer. The only dependency is `openpyxl`.
-
-From source:
 
 ```bash
 git clone https://github.com/Waiga/show-your-work
 cd show-your-work
 pip install -e .
 ```
+
+It is not published to PyPI, so `pip install show-your-work` will not work.
+Install it from source, as above.
 
 ## Use
 
