@@ -23,6 +23,98 @@ class UnreadableWorkbook(Exception):
 # Only formats openpyxl actually parses. .xls is a different, older binary format.
 READABLE_SUFFIXES = {".xlsx", ".xlsm"}
 
+# An .xlsx is a zip, and openpyxl parses its parts into memory with the standard
+# library's XML parser. Two shapes of file abuse that: a part that unpacks to far
+# more than any real workbook, and XML that declares entities to expand on parse.
+# Both are refused here, before openpyxl opens the file, so a hostile file becomes a
+# plain refusal (exit 2) rather than an out-of-memory kill or a silent empty report.
+#
+# The limits are set well above any ordinary workbook and well below a bomb. A dense
+# 50,000-row sheet unpacks to about 15 MB with a best single-part ratio near 6x; a
+# pathologically repetitive but legitimate one reaches about 16x. A 200 KB bomb whose
+# sheet part unpacks to 200 MB drove memory past 700 MB at a ratio near 1000x.
+MAX_TOTAL_UNCOMPRESSED = 512 * 1024 * 1024  # 512 MiB summed across every part
+MAX_PART_RATIO = 100  # any single part's uncompressed:compressed size
+
+# A ratio is only evidence of a bomb on a part big enough to be one. Small parts
+# compress extremely well for ordinary reasons — a theme, a styles table, a sheet of
+# repeated values — and judging those on ratio alone would refuse real workbooks for
+# no gain, because a part this size cannot exhaust anything. Many small parts are
+# still caught, by the total above.
+MIN_PART_SIZE_TO_JUDGE = 4 * 1024 * 1024
+
+# The parts openpyxl parses as XML. A real .xlsx never declares a document type or an
+# entity in any of them; both are the machinery of an entity-expansion payload, so
+# their mere presence is refused rather than measured.
+_XML_PART_SUFFIXES = (".xml", ".rels")
+_FORBIDDEN_XML_MARKERS = (b"<!DOCTYPE", b"<!ENTITY")
+# A DOCTYPE and its entity declarations live in the XML prolog, before the root
+# element, so scanning the first slice of each part is enough to find them and keeps
+# the scan itself bounded even on a part that is individually large.
+_XML_SCAN_BYTES = 1024 * 1024
+
+
+def _mib(n: int) -> str:
+    return f"{n / (1024 * 1024):.0f} MB"
+
+
+def _preflight_container(path: Path) -> None:
+    """Refuse a file shaped like a zip bomb or an XML entity-expansion payload.
+
+    Runs before openpyxl opens the file. A file that is not a valid zip is left for
+    openpyxl, whose existing error path names the corrupt-or-password case. Any refusal
+    here is an UnreadableWorkbook with a plain reason, so the caller exits 2.
+    """
+    try:
+        archive = zipfile.ZipFile(path)
+    except zipfile.BadZipFile:
+        # Not a readable zip. Let load_workbook raise, so the existing message
+        # (corrupt, mislabelled, or open-password) is the one the reader sees.
+        return
+    except Exception:
+        return
+
+    with archive:
+        infos = archive.infolist()
+
+        total = sum(info.file_size for info in infos)
+        if total > MAX_TOTAL_UNCOMPRESSED:
+            raise UnreadableWorkbook(
+                f"This file unpacks to {_mib(total)}, far more than any ordinary "
+                f"workbook (the limit is {_mib(MAX_TOTAL_UNCOMPRESSED)}). It is refused "
+                "unread, because opening it could exhaust memory. If it is genuine, it "
+                "is unusually large; confirm it in Excel before trusting it."
+            )
+
+        for info in infos:
+            if info.compress_size <= 0 or info.file_size < MIN_PART_SIZE_TO_JUDGE:
+                continue
+            ratio = info.file_size / info.compress_size
+            if ratio > MAX_PART_RATIO:
+                raise UnreadableWorkbook(
+                    f"One part of this file expands {ratio:.0f}x when unpacked "
+                    f"({_mib(info.file_size)} from {info.compress_size} bytes), the "
+                    "signature of a decompression bomb rather than a spreadsheet. It "
+                    "is refused unread."
+                )
+
+        for info in infos:
+            if not info.filename.lower().endswith(_XML_PART_SUFFIXES):
+                continue
+            try:
+                with archive.open(info) as part:
+                    head = part.read(_XML_SCAN_BYTES)
+            except Exception:
+                # A part that will not even open cleanly is openpyxl's problem to
+                # report, not this pre-flight's.
+                continue
+            if any(marker in head for marker in _FORBIDDEN_XML_MARKERS):
+                raise UnreadableWorkbook(
+                    "This workbook's XML declares an entity or document type, which a "
+                    "spreadsheet never needs and which is the mechanism of an XML "
+                    "entity-expansion attack. It is refused unread."
+                )
+
 
 @dataclass
 class LoadedWorkbook:
@@ -84,6 +176,9 @@ def load(path_str: str) -> LoadedWorkbook:
             f"{path.suffix or 'This file'} is not a format this tool reads. "
             f"Supported: {', '.join(sorted(READABLE_SUFFIXES))}."
         )
+
+    # Inspect the zip container before openpyxl parses anything into memory.
+    _preflight_container(path)
 
     try:
         formulas = load_workbook(path, data_only=False, keep_vba=False)
