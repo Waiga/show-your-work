@@ -253,6 +253,13 @@ this tool exists for have nothing to read, and a clean report on such a file mea
 that the value-based checks found nothing. That sample leaned toward budget and statistics
 files, so 21% is what those 527 workbooks showed, not a rate for spreadsheets in general.
 
+**How this was measured.** Which 527 workbooks, where each came from, its
+SHA-256, and which of them the tool was actually run on:
+[`docs/corpus-manifest.md`](docs/corpus-manifest.md), with the list itself in
+[`docs/corpus/workbooks.tsv`](docs/corpus/workbooks.tsv). The manifest also
+records what was not kept — including which files the 21% counted, for the half
+of the sweep where that was never written down.
+
 ## What it does not check
 
 This list is part of the tool, not a disclaimer. Every run prints it.
