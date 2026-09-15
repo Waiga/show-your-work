@@ -44,13 +44,13 @@ show-your-work examples/clean-forecast.xlsx   # nothing found, exit 0
 The example above is built to be broken. This one was not.
 
 [Socio-economic statistics for rural and urban Ontario](https://data.ontario.ca/dataset/c30aa695-4735-466a-bc6e-fd31f1290973),
-published by the Ontario Ministry of Agriculture, Food and Agribusiness under the Open
-Government Licence – Ontario.
+published by the Ontario Ministry of Agriculture, Food and Agribusiness under Ontario's Open
+Government Licence.
 
 On the `Population by age` sheet, the 2016 census block occupies columns R to X, and rows
 5 to 22 are eighteen five-year age bands. Two of them are gone. The age labels in R19 and
-R20 are empty, the Ontario counts in S19 and S20 are empty, and T19 and T20 — which should
-divide the Ontario count by the block total — have a `#REF!` numerator and a saved `#REF!`
+R20 are empty, the Ontario counts in S19 and S20 are empty, and T19 and T20, which should
+divide the Ontario count by the block total, have a `#REF!` numerator and a saved `#REF!`
 result.
 
 Which two bands were lost is legible from the sheet itself. The 2021 block immediately to
@@ -58,7 +58,7 @@ the left still labels its rows 19 and 20 "Both sexes: 70-74 years" and "Both sex
 years", and those are exactly the bands the 2016 sequence skips: it runs 65-69 and then
 jumps to 80-84. The Urban and Rural columns on those same two rows still hold their
 numbers, and on all sixteen surviving 2016 rows the Ontario figure equals Urban plus Rural
-exactly — so the identity that holds everywhere else in the block would reconstruct both
+exactly, so the identity that holds everywhere else in the block would reconstruct both
 missing figures from cells that are still there.
 
 ```bash
@@ -94,7 +94,7 @@ workbook is what got the level fixed.
 
 Note also which check caught it. `error_value` is the least clever row in the table below,
 and this README's own argument is that the dangerous cell is the one *not* showing an
-error. Both are true. The error is only the marker; the finding is the two missing rows —
+error. Both are true. The error is only the marker; the finding is the two missing rows,
 three columns wide, two thirds of the way down a 246-row sheet, in a block that reads as
 complete because every band still present is correct.
 
@@ -173,7 +173,7 @@ This repository ships a [pre-commit](https://pre-commit.com) hook, so every `.xl
 ```yaml
 repos:
   - repo: https://github.com/Waiga/show-your-work
-    rev: v0.2.1            # pin to a tag or commit
+    rev: v0.2.2            # pin to a tag or commit
     hooks:
       - id: show-your-work
         args: [--fail-on, high]   # optional; high is the default
@@ -245,7 +245,7 @@ The tool never uploads the file or makes a network call, so it needs no secrets 
 
 **Most spreadsheets are not models, and three of these checks need one.** In a sweep of 527
 valid public government `.xlsx` files, only 21% contained a formula of any kind. On the
-other 79% — flat, value-only exports — `overwritten_formula`, `inconsistent_formula` and
+other 79% (flat, value-only exports), `overwritten_formula`, `inconsistent_formula` and
 `total_misses_rows` are structurally incapable of firing: there is no formula to overwrite,
 no repeated pattern to break, and no range to fall short of. Those files can still produce
 `error_value`, `number_stored_as_text`, `hidden_sheet` and the rest, but the three checks
@@ -255,9 +255,9 @@ files, so 21% is what those 527 workbooks showed, not a rate for spreadsheets in
 
 **How this was measured.** Which 527 workbooks, where each came from, its
 SHA-256, and which of them the tool was actually run on:
-[`docs/corpus-manifest.md`](docs/corpus-manifest.md), with the list itself in
-[`docs/corpus/workbooks.tsv`](docs/corpus/workbooks.tsv). The manifest also
-records what was not kept — including which files the 21% counted, for the half
+[`docs/corpus-manifest.md`](https://github.com/Waiga/show-your-work/blob/main/docs/corpus-manifest.md), with the list itself in
+[`docs/corpus/workbooks.tsv`](https://github.com/Waiga/show-your-work/blob/main/docs/corpus/workbooks.tsv). The manifest also
+records what was not kept, including which files the 21% counted, for the half
 of the sweep where that was never written down.
 
 ## What it does not check
@@ -277,7 +277,7 @@ This list is part of the tool, not a disclaimer. Every run prints it.
 
 Absence of a finding is reported as "not checked", never as a confirmed no.
 
-## The boundary — what the tool structurally cannot see
+## The boundary: what the tool structurally cannot see
 
 The section above is what the tool chooses not to judge. This section is different: it is
 what the tool *cannot* reach, because the file format hides it from the way the tool
@@ -302,8 +302,8 @@ open, is outside its reach.
   Excel has formulas with no saved results; the value-based checks cannot run and the
   report says so. When saved results do exist, they are only as current as the last save,
   and a formula changed since then may show a stale number the tool takes at face value.
-- **A one-off partial aggregate.** A total that deliberately sums part of a range —
-  `=SUM(B2:D2)` in a table that runs out to F — is indistinguishable from a total that
+- **A one-off partial aggregate.** A total that deliberately sums part of a range
+  (`=SUM(B2:D2)` in a table that runs out to F) is indistinguishable from a total that
   stops short by mistake. The file records the range, never the intent. The tool settles
   it by repetition: the same partial-aggregate formula appearing in three or more cells is
   a design decision and is not reported, on the reasoning that a slip happens once. A
