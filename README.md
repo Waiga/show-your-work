@@ -123,11 +123,11 @@ cd show-your-work
 pip install -e .
 ```
 
-The package is called `unexplained-cells`, which is what it reports. The name
-`show-your-work` on PyPI belongs to [showyourwork](https://pypi.org/project/showyourwork/),
-an established and unrelated project for reproducible scientific articles, and a
-near-miss name beside theirs would help nobody. The command you type is still
-`show-your-work`.
+The package is called `unexplained-cells`, which is what it reports. PyPI refused
+`show-your-work` as too similar to [showyourwork](https://pypi.org/project/showyourwork/),
+an established and unrelated project for reproducible scientific articles. The name
+itself is unregistered, and a near-miss beside theirs would help nobody, so this one
+carries a name of its own. The command you type is still `show-your-work`.
 
 ## Use
 
