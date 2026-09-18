@@ -5,8 +5,8 @@ Ontario workbook the "A real one" section is about, and the sweep of 527 public
 government spreadsheets behind the 21% figure. This document says exactly what
 each of them is, so a stranger can obtain the same files and check.
 
-The README already pins the Ontario file properly — download URL, publication
-date and SHA-256. That is the standard the rest of this document is written to.
+The README already pins the Ontario file properly, with a download URL, a
+publication date and a SHA-256. That is the standard the rest of this document is written to.
 
 Where something was not recorded at the time, this document says so rather than
 reconstructing it.
@@ -18,8 +18,8 @@ on **7 September 2026**. This is the corpus that found four false-positive
 classes in the tool, all fixed in v0.2, and it is the corpus the 21% figure is
 computed over.
 
-**The list.** [`docs/corpus/workbooks.tsv`](corpus/workbooks.tsv) — 527 rows
-plus a header:
+**The list.** [`docs/corpus/workbooks.tsv`](corpus/workbooks.tsv) holds 527
+rows plus a header:
 
 | column | meaning |
 |---|---|
@@ -68,7 +68,7 @@ filtered on content, size, subject or whether the tool would find anything.
 |---|---|
 | public `.xlsx` resources enumerated across the eight portals | ~2,430 |
 | download attempts | ~1,060 |
-| **valid `.xlsx` obtained — the 527** | **527** |
+| **valid `.xlsx` obtained, the 527** | **527** |
 | of which contain any formula at all | 113 (21%) |
 | tool run to completion on | 245 |
 
@@ -106,14 +106,14 @@ The README says: "In a sweep of 527 valid public government `.xlsx` files, only
 name and are marked `formula_bearing = yes` in the manifest. The other 271 files
 of batch 2 are marked `no`.
 
-**What is not pinned.** The 16 formula-bearing files of batch 1 — 113 minus 97 —
+**What is not pinned.** The 16 formula-bearing files of batch 1, which is 113 minus 97,
 **were never recorded individually**. Batch 1's rows therefore carry an empty
 `formula_bearing` column rather than a guess. The column is blank because the
 information does not exist, not because it was not looked for.
 
 **And the method behind 113 is not recorded either.** No surviving script says
-how "contains a formula" was decided. A crude re-count over the same 527 files —
-scanning each worksheet's XML for an `<f>` element — finds 99, not 113, and its
+how "contains a formula" was decided. A crude re-count over the same 527 files,
+scanning each worksheet's XML for an `<f>` element, finds 99, not 113, and its
 result is a strict subset of the 97 recorded batch-2 names, so it is a narrower
 test than whatever was used, not a contradiction of it. **The published 113 has
 not been changed**, because a cruder recount is not grounds to overwrite a
@@ -160,11 +160,11 @@ news.
 
 | claim | status |
 |---|---|
-| which 527 workbooks | **reproducible** — every filename, hash and URL ships here |
-| the 245 the tool was run on | **reproducible** — flagged per row |
-| the Ontario file and its findings | **reproducible** — URL, date and hash pinned |
-| the 97 formula-bearing files of batch 2 | **reproducible** — flagged per row |
-| the 16 formula-bearing files of batch 1 | **not reproducible** — never recorded individually |
-| the exact method behind "113 contain a formula" | **not recorded** — a stricter recount gives 99 |
+| which 527 workbooks | **reproducible**, every filename, hash and URL ships here |
+| the 245 the tool was run on | **reproducible**, flagged per row |
+| the Ontario file and its findings | **reproducible**, URL, date and hash pinned |
+| the 97 formula-bearing files of batch 2 | **reproducible**, flagged per row |
+| the 16 formula-bearing files of batch 1 | **not reproducible**, never recorded individually |
+| the exact method behind "113 contain a formula" | **not recorded**. A stricter recount gives 99 |
 | the per-file findings from the sweep | working files on one machine, **not published** |
 | the sweep harness | **not published** |
