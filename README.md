@@ -28,6 +28,9 @@ HIGH    Forecast!D12  [total_misses_rows]
         SUM skips 2 rows that sit between its range and the total
 ```
 
+That is the HIGH section. The run goes on to print `MEDIUM`, `LOW` and
+`NOT CHECKED`, which together account for the other four findings.
+
 That output is real. `examples/messy-forecast.xlsx` is built by
 `examples/make_examples.py` with seven problems planted in it, and
 `examples/clean-forecast.xlsx` is the same sheet built properly, on which the tool
