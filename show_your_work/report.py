@@ -60,7 +60,7 @@ def to_text(report: Report, show_values: bool = False, verbose: bool = False) ->
     counts = report.counts()
     total = sum(counts.values())
 
-    lines.append(f"Show Your Work — {report.path}")
+    lines.append(f"Show Your Work: {report.path}")
     lines.append(_rule("="))
     lines.append(
         f"Read {len(report.sheets_read)} sheet(s). "

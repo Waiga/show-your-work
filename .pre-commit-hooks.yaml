@@ -6,7 +6,7 @@
 #
 #   repos:
 #     - repo: https://github.com/Waiga/show-your-work
-#       rev: v0.1.0            # pin to a tag or commit
+#       rev: v0.3.0            # pin to a tag or commit
 #       hooks:
 #         - id: show-your-work
 #           args: [--fail-on, high]   # optional; high is the default
