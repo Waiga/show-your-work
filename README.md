@@ -12,21 +12,24 @@ It runs entirely on your machine. No upload, no account, no API key, no network 
 ```
 $ show-your-work examples/messy-forecast.xlsx
 
-Show Your Work — examples/messy-forecast.xlsx
+Show Your Work: examples/messy-forecast.xlsx
 ========================================================================
 Read 2 sheet(s). 7 finding(s): 3 high, 2 medium, 2 low.
 
 HIGH
 ------------------------------------------------------------------------
-HIGH    Forecast!D9   [inconsistent_formula]
+HIGH    Forecast!D9  [inconsistent_formula]
         Formula differs from the 8 matching formulas in this column
 
-HIGH    Forecast!D5   [overwritten_formula]
+HIGH    Forecast!D5  [overwritten_formula]
         Typed number inside a column of formulas
 
 HIGH    Forecast!D12  [total_misses_rows]
         SUM skips 2 rows that sit between its range and the total
 ```
+
+That is the HIGH section. The run goes on to print `MEDIUM`, `LOW` and
+`NOT CHECKED`, which together account for the other four findings.
 
 That output is real. `examples/messy-forecast.xlsx` is built by
 `examples/make_examples.py` with seven problems planted in it, and
@@ -173,7 +176,7 @@ This repository ships a [pre-commit](https://pre-commit.com) hook, so every `.xl
 ```yaml
 repos:
   - repo: https://github.com/Waiga/show-your-work
-    rev: v0.2.3            # pin to a tag or commit
+    rev: v0.3.0            # pin to a tag or commit
     hooks:
       - id: show-your-work
         args: [--fail-on, high]   # optional; high is the default
