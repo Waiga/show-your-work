@@ -368,3 +368,12 @@ MIT.
 
 [Waiga Arya](https://www.linkedin.com/in/waigaarya/), Director of Business Strategy and
 Innovation at Sadaway Pvt. Ltd. These tools were built for my own operating problems first.
+
+What 527 real government workbooks did to this tool, set beside seven others
+that were measured the same way, is written up in
+[Every fixture in the suite used a classic xref table](https://medium.com/@aryawaiga0/every-fixture-in-the-suite-used-a-classic-xref-table-bb0cc0addda2).
+
+## Elsewhere
+
+The rest of these tools, and the writing about what real files did to them, is at
+[waiga.github.io](https://waiga.github.io).
